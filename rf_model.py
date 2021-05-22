@@ -28,7 +28,7 @@ all_data = pd.read_csv('./files/all_stock_data_with_indicators.csv')
 all_data.Date = pd.to_datetime(all_data.Date)
 all_data = all_data.set_index('Date')
 
-all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-30))
+all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-14))
 all_data['Target'] = ((all_data['Close_Shifted'] - all_data['Open'])/(all_data['Open']) * 100).shift(-1)
 all_data['Target_Direction'] = np.where(all_data['Target']>0,1,0)
 all_data = all_data.dropna().copy()
@@ -48,7 +48,7 @@ test_data = all_data.loc['2019-01-01':]
 
 
 
-##--------------------------TRAINING---------------------------
+##------------------------------------------TRAINING----------------------------------------
 
 
 model_accuracy = pd.DataFrame(columns = ['Cluster','Stocks','Accuracy_score'])
