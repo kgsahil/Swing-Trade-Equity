@@ -17,14 +17,16 @@ df_index_data = pd.DataFrame()
 df_all_index_data = pd.DataFrame()
 for st in indices:
     df_index_data = get_history(symbol=st,index=True,start=dt.date(2018,1,1),end=dt.date(2021,5,7))
-    df_index_data['symbol'] = st
+    df_index_data['NIFTY_INDEX'] = st
     df_all_index_data = df_all_index_data.append(df_index_data)
 
     
+df_all_index_data = pd.read_csv('./files/all_index_data.csv')
 df_all_index_data.head()
-df_all_index_data['1DRC'] = df_all_index_data.groupby('symbol')['Close'].transform(lambda x: x.pct_change(periods = 1)*100) 
-df_all_index_data['1WRC'] = df_all_index_data.groupby('symbol')['Close'].transform(lambda x: x.pct_change(periods = 7)*100) 
-df_all_index_data['1MRC'] = df_all_index_data.groupby('symbol')['Close'].transform(lambda x: x.pct_change(periods = 30)*100) 
+df_all_index_data['3DRC'] = df_all_index_data.groupby('NIFTY_INDEX')['Close'].transform(lambda x: x.pct_change(periods = 3)*100) 
+df_all_index_data['1WRC'] = df_all_index_data.groupby('NIFTY_INDEX')['Close'].transform(lambda x: x.pct_change(periods = 7)*100) 
 df_all_index_data =  df_all_index_data.dropna()
-df_all_index_data.index = pd.to_datetime(df_all_index_data.index)
 df_all_index_data.to_csv("./files/all_index_data.csv")
+
+#df_all_index_data['Date'] = pd.to_datetime(df_all_index_data['Date'])
+#df_all_index_data['Date']= df_all_index_data['Date'].apply(lambda d: d.strftime('%Y-%m-%d'))

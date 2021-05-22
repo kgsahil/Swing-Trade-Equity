@@ -15,9 +15,12 @@ import datetime as dt
 plt.rcParams['figure.figsize'] = [12, 7]
 plt.rc('font', size=14)
 
-all_data = pd.read_csv('./files/all_data_2008.csv')
+all_data = pd.read_csv('./files/all_stock_data_with_indicators.csv')
 all_data.Date = pd.to_datetime(all_data.Date)
 all_data = all_data.set_index('Date')
+
+
+all_index_data = pd.read_csv('./files/all_index_data.csv')
 
 
 
@@ -51,7 +54,7 @@ def cut_losses_at(stoploss,top_10_pred):
    realised_pct_change = []
    for index,row in top_10_pred.iterrows(): 
        df = all_data[all_data.symbol == row.Companies]
-       selected = df[row.Date:].head(32)['Low'].values[1:]
+       selected = df[row.Date:].head(21)['Low'].values[1:]
        if True in np.less_equal(selected,row.buy_value*(1 - stoploss)):
            realised_pct_change.append(-stoploss*100)
        else:
@@ -111,22 +114,35 @@ def get_risk_reward(top_10_pred):
     
     
 
+def get_index_change(top_10_pred):
+    date = dt.datetime.strftime(pd.to_datetime(top_10_pred.Date.values[0]),'%d-%m-%Y')
+    data = all_index_data[all_index_data.Date == date]
+    index_change = top_10_pred.merge(data[['NIFTY_INDEX','3DRC','1WRC']],on=["NIFTY_INDEX"], how='left')
+    return index_change
+        
+        
+        
+        
+        
+        
 #Execute the trade and see if target or stoploss is encounter
     #if the a specific trading day is positive[the diffrence of open and close (close-open) gives positive value] for the particular stock
         #check the high first for the target and then low
     #else check the low first for the stoploss and then high for the target
 #assign realised return to the if any one condition matches during the trade otherwise reaised return will be % gain/loss over 30 days
-def execuet_trade_with_levels(top_10_pred):
+def execute_trade_with_levels(top_10_pred):
    realised_pct_change = []
+   exit_log = []
    for index,row in top_10_pred.iterrows(): 
        df = all_data[all_data.symbol == row.Companies]
-       selected = df[row.Date:].head(32)[['Open','High','Low','Close']]
+       selected = df[row.Date:].head(21)[['Open','High','Low','Close']]
        selected = selected.iloc[1:]
        
        #Start the game 
        realised_pct = row.pct_change_trade
+       exit_date = pd.to_datetime(selected.iloc[-1:].index)[0].date()
        if row.nearest_resistance == 'NA':
-           #reward = stoploss x 2; no upper resistance means expecting 2x reward than risk
+           #reward = stoploss x 2; no upper resistance means expecting 3x reward than risk
            reward = abs(((row.nearest_support-row.buy_value)/row.buy_value)*100)*3
            row.nearest_resistance = row.buy_value + ((reward/100)*row.buy_value)
        for i,r in selected.iterrows():
@@ -135,18 +151,24 @@ def execuet_trade_with_levels(top_10_pred):
                if r['High'] >= row.nearest_resistance:
                    pct_change_trade = ((row.nearest_resistance-row.buy_value)/row.buy_value)*100
                    realised_pct = pct_change_trade
+                   exit_date = i.strftime('%Y-%m-%d')
                elif r['Low'] <= row.nearest_support:
                    pct_change_trade = ((row.nearest_support-row.buy_value)/row.buy_value)*100
                    realised_pct = pct_change_trade
+                   exit_date = i.strftime('%Y-%m-%d')
            else:
                if r['Low'] <= row.nearest_support:
                    pct_change_trade = ((row.buy_value-row.nearest_support)/row.nearest_support)*100
                    realised_pct = pct_change_trade
+                   exit_date = i.strftime('%Y-%m-%d')
                elif r['High'] >= row.nearest_resistance:
                    pct_change_trade = ((row.nearest_resistance-row.buy_value)/row.buy_value)*100
                    realised_pct = pct_change_trade
+                   exit_date = i.strftime('%Y-%m-%d')
+       exit_log.append(exit_date)
        realised_pct_change.append(realised_pct) 
    top_10_pred['pct_change_trade'] = realised_pct_change
+   top_10_pred['exit_date'] = exit_log
    return top_10_pred
     
 ###for all support and resistance from last 120 trading days

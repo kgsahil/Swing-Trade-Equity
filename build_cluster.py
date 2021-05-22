@@ -56,13 +56,14 @@ clusters_df = clusters_df.sort_values(['Cluster']).reset_index(drop = True)
 
 #[THIS WILL OVERRIDE ABOVE OPERATION WITH INDUSTRY CLASSIFICATION]
 nifty_with_industry = pd.read_csv('./files/ind_nifty100list_with_cnx.csv')
-
 nifty_with_industry['Companies'] = nifty_with_industry['Companies']+'.NS'
+clusters_df = pd.read_csv('./files/clusters/clusters.csv')
 
 new_cluster_df = clusters_df.merge(nifty_with_industry,how='left',on=['Companies'])
 new_cluster_df['Cluster'] = new_cluster_df['Industry']
 
-clusters_df = new_cluster_df[['Cluster','Companies']]
+clusters_df = new_cluster_df[['Cluster','Companies','NIFTY_INDEX']]
 
+clusters_df = clusters_df.sort_values(['Cluster']).reset_index(drop = True)
 #Save as csv
 clusters_df.to_csv("./files/clusters/clusters.csv")
