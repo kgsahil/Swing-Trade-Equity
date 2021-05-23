@@ -27,7 +27,7 @@ all_data = pd.read_csv('./files/all_stock_data_with_indicators.csv')
 all_data.Date = pd.to_datetime(all_data.Date)
 all_data = all_data.set_index('Date')
 
-all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-19))
+all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-7))
 all_data['Target'] = ((all_data['Close_Shifted'] - all_data['Open'])/(all_data['Open']) * 100).shift(-1)
 all_data['Target_Direction'] = np.where(all_data['Target']>0,1,0)
 all_data = all_data.dropna().copy() 
@@ -62,8 +62,8 @@ test_df = pd.DataFrame()
 
 # isoweekday: Monday is 1 and Sunday is 7
 trading_holidays= ['04-03-2019','21-03-2019','17-04-2019','19-04-2019','20-04-2019','01-05-2019','05-06-2019','12-08-2019','15-08-2019','02-09-2019','10-09-2019','02-10-2019','08-10-2019','21-10-2019','28-10-2019','12-11-2019','25-12-2019','21-02-2020','10-03-2020','02-Apr-2020','06-Apr-2020','10-04-2020','14-04-2020','01-05-2020','25-05-2020','02-10-2020','16-11-2020','30-11-2020','25-12-2020','26-01-2021','11-03-2021','20-03-2021','02-04-2021','14-04-2021','21-04-2021','13-05-2021','21-07-2021','19-08-2021','10-09-2021','15-10-2021','04-11-2021','05-11-2021','19-11-2021']
-start_date = dt.date(2021, 1, 15)
-end_date = dt.date(2021, 1, 30)
+start_date = dt.date(2020, 7, 12)
+end_date = dt.date(2020, 9, 20)
 days = end_date - start_date
 valid_date_list = {(start_date + dt.timedelta(days=x)).strftime('%d-%m-%Y')
                         for x in range(days.days+1)
@@ -83,12 +83,10 @@ number_of_trades = int(len(valid_date_list))
 print('Number of possible trades: ',number_of_trades)
 
 
-pct_day_change = []
-investment_returns = []
+
 stockCounter =  pd.DataFrame()
-total_investment = 0
 risk_reward_ratio = 1.5
-TradeBook = pd.DataFrame()
+TradeBook = pd.DataFrame(columns=['Date','exit_date','Companies','Status','buy_value','sell_value','pct_change_trade','risk_reward_ratio'])
 for i in range(0,int(len(valid_date_list))):
     Trade_Date = dt.datetime.strptime(valid_date_list[i], '%d-%m-%Y').strftime('%Y-%m-%d')
     day_data = test_data.loc[Trade_Date]
@@ -118,8 +116,6 @@ for i in range(0,int(len(valid_date_list))):
     
     
     
-   
-    
     for selected_company in top_10_pred['Companies']:
         actual = all_data[all_data.symbol == selected_company].loc[Trade_Date,'Target_Direction']
         pct_change = all_data[all_data.symbol == selected_company].loc[Trade_Date,'Target']
@@ -129,7 +125,7 @@ for i in range(0,int(len(valid_date_list))):
         test_df = top_10_pred  
         
     top_10_pred = get_buy_value(top_10_pred.copy()) 
-    top_10_pred = get_nearest_support_resistance(top_10_pred.copy())
+    top_10_pred = get_nearest_support_resistance(top_10_pred.copy(),False)
     top_10_pred = get_risk_reward(top_10_pred.copy())
     top_10_pred = get_index_change(top_10_pred.copy())
     
@@ -142,30 +138,26 @@ for i in range(0,int(len(valid_date_list))):
     
     #executing the trade not use in production
     top_10_pred = execute_trade_with_levels(top_10_pred.copy())
+    _ = get_nearest_support_resistance(top_10_pred.copy(),True)
     
     try:
       
-      print(top_10_pred[['Date','exit_date','Companies','prediction','buy_value','pct_change_trade','risk_reward_ratio','NIFTY_INDEX','3DRC','1WRC']])
+      #print(top_10_pred[['Date','exit_date','Companies','prediction','Status','buy_value','pct_change_trade','risk_reward_ratio','NIFTY_INDEX','3DRC','1WRC']])
       if len(top_10_pred) == 0:
           raise Exception("Sorry, no trades")
       
-      pct_day_change.append(top_10_pred['pct_change_trade'].sum())
-      investment_returns.append(top_10_pred['buy_value'].sum()+((top_10_pred['pct_change_trade'].sum()/100)*top_10_pred['buy_value'].sum()))
-      total_investment += top_10_pred['buy_value'].sum()
+      TradeBook = TradeBook.append(top_10_pred[['Date','exit_date','Companies','Status','buy_value','sell_value','pct_change_trade','risk_reward_ratio']],ignore_index=True)
     except:
-      number_of_trades -= 1
       continue
-    TradeBook.append(top_10_pred)
-  
-
-plt.plot(pct_day_change)
+   
+plt.plot(TradeBook['pct_change_trade'])
+net_profit_loss = ((TradeBook.sell_value.sum()-TradeBook.buy_value.sum())/TradeBook.buy_value.sum())*100
 plt.ylabel('Returns')
-plt.xlabel(f'Trades Net profit/loss: {sum(pct_day_change)/number_of_trades}    with risk:reward of 1:{risk_reward_ratio}')
+plt.xlabel(f'Trades Net profit/loss: {net_profit_loss}    with risk:reward of 1:{risk_reward_ratio}')
 plt.title(f'Trades from {start_date} to {end_date}')
 
-print('Number of Trades: ',number_of_trades)
-print("Net Profit/Loss: ",sum(pct_day_change)/number_of_trades)
-total_returns_including_principal = sum(investment_returns)
-print(total_investment,total_returns_including_principal)
+print('Number of Trades: ',len(TradeBook))
+print("Net Profit/Loss: ",net_profit_loss)
+print(TradeBook.buy_value.sum(),TradeBook.sell_value.sum())
   
 

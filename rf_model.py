@@ -8,11 +8,12 @@ Created on Mon May 10 18:44:01 2021
 import pandas as pd
 import numpy as np
 import datetime as dt
+import os   
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import mstats
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import  TimeSeriesSplit,ShuffleSplit
+from sklearn.model_selection import  TimeSeriesSplit,ShuffleSplit , validation_curve
 from sklearn.tree import export_graphviz
 import pickle
 from sklearn.model_selection import GridSearchCV
@@ -28,7 +29,7 @@ all_data = pd.read_csv('./files/all_stock_data_with_indicators.csv')
 all_data.Date = pd.to_datetime(all_data.Date)
 all_data = all_data.set_index('Date')
 
-all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-19))
+all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-7))
 all_data['Target'] = ((all_data['Close_Shifted'] - all_data['Open'])/(all_data['Open']) * 100).shift(-1)
 all_data['Target_Direction'] = np.where(all_data['Target']>0,1,0)
 all_data = all_data.dropna().copy()
@@ -42,12 +43,35 @@ for variable in Target_variables:
     all_data.loc[:,variable] = mstats.winsorize(all_data.loc[:,variable], limits = [0.1,0.1])
 
 
-train_data = all_data.loc[:'2018-12-31',]
-test_data = all_data.loc['2019-01-01':]
+train_data = all_data.loc[:'2020-03-31',]
+test_data = all_data.loc['2020-04-01':]
+
+#-----------------------------------------CROSS VALIDATION FOR BETTER HYPERPARAMETER---------------------
+#Separate between X and Y
+X_train = train_data.loc[:,Target_variables]
+Y_train = train_data.loc[:,['Target_Direction']]
+
+rf = RandomForestClassifier()
+train_scoreNum, test_scoreNum = validation_curve(rf,
+                                X = X_train.loc['2008-01-01':], 
+                                y = Y_train.loc['2008-01-01':,'Target_Direction'], 
+                                param_name = 'n_estimators', 
+                                param_range = [70,100,200,250], cv = ShuffleSplit(n_splits = 3))
+
+train_scores_mean = np.mean(train_scoreNum, axis=1)
+train_scores_std = np.std(train_scoreNum, axis=1)
+test_scores_mean = np.mean(test_scoreNum, axis=1)
+test_scores_std = np.std(test_scoreNum, axis=1)
+
+plt.figure(figsize = (20,10))
+plt.plot([70,100,200,250],train_scores_mean)
+plt.plot([70,100,200,2500],test_scores_mean)
+plt.legend(['Train Score','Test Score'], fontsize = 'large')
+plt.title('Validation Curve Score for n_estimators', fontsize = 'large')
 
 
-
-
+feat_importances = pd.Series(rf.feature_importances_, index=X_train.columns)
+feat_importances.plot(kind='barh')
 ##------------------------------------------TRAINING----------------------------------------
 
 
@@ -93,7 +117,13 @@ for cluster_selected in clusters_df.Cluster.unique():
     model_accuracy.loc[len(model_accuracy)]  = [cluster_selected,len(clusters_df[clusters_df.Cluster == cluster_selected]),rf_cv.best_score_]
 
     #Save the fited variable into a Pickle file
-    file_loc = f'./files/clusters/Cluster_{cluster_selected}'    
+    file_loc = f'./files/clusters/Cluster_{cluster_selected}' 
+    
+    export_graphviz(rf_cv,
+                feature_names=X_train.columns,
+                filled=True,
+                rounded=True)
+    os.system('dot -Tpng tree.dot -o ./files/clusters/Cluster_{cluster_selected}.png')
     pickle.dump(rf_cv, open(file_loc,'wb'))
   
 print(model_accuracy)

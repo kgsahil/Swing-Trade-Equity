@@ -67,23 +67,23 @@ def cut_losses_at(stoploss,top_10_pred):
 #Get the spot support and resistance for the trade
 #To get support which is below the buy_value, sort the levels in descending order and get 1st less value of buy_value
 #To get the resitance which is above the buy_value, sort the levels in ascending order and get the 1st greater value of the buy_value 
-def get_nearest_support_resistance(top_10_pred):
+def get_nearest_support_resistance(top_10_pred,plot=False):
     nearest_support = []
     nearest_resistance = []
     risk_reward = []
     for index,row in top_10_pred.iterrows(): 
-       levels_df = get_levels(row.Companies, row.Date)
+       levels_df = get_levels(row.Companies, row.Date,plot)
        levels_df = levels_df.sort_values(by=['price'], ascending=False)
        try:
            temp = levels_df[levels_df['price'].lt(row.buy_value)].values[0][0]
-           temp = temp - ((0.5/100)*temp)
+           #temp = temp - (0.01*temp)
            nearest_support.append(temp)
        except:
            nearest_support.append('NA')
        levels_df = levels_df.sort_values(by=['price'], ascending=True)
        try:
            temp = levels_df[levels_df['price'].gt(row.buy_value)].values[0][0]
-           #temp = temp + ((1/100)*temp)
+           #temp = temp - (0.01*temp)
            nearest_resistance.append(temp)
        except:
            nearest_resistance.append('NA')
@@ -102,11 +102,16 @@ def get_risk_reward(top_10_pred):
             ratio = 0;
         else:
             risk = round(row.buy_value - row.nearest_support,2)
-            try:
-                reward = round(row.nearest_resistance - row.buy_value,2)
-                ratio = round(reward/risk,2)
-            except:
-                ratio = 3.0
+            #discard the trade if risk is more than 5%
+            if False:
+                ratio = 0
+            else:
+                try:
+                    reward = round(row.nearest_resistance - row.buy_value,2)
+                    ratio = round(reward/risk,2)
+                except:
+                    ratio = 3.0
+            
         risk_reward.append(ratio)
     top_10_pred['risk_reward_ratio']  = risk_reward
     return top_10_pred
@@ -133,14 +138,18 @@ def get_index_change(top_10_pred):
 def execute_trade_with_levels(top_10_pred):
    realised_pct_change = []
    exit_log = []
+   trade_status = []
+   sell_value = []
    for index,row in top_10_pred.iterrows(): 
        df = all_data[all_data.symbol == row.Companies]
-       selected = df[row.Date:].head(21)[['Open','High','Low','Close']]
+       selected = df[row.Date:][['Open','High','Low','Close']]
        selected = selected.iloc[1:]
        
        #Start the game 
        realised_pct = row.pct_change_trade
        exit_date = pd.to_datetime(selected.iloc[-1:].index)[0].date()
+       status = 'HOLD'
+       sell = selected.iloc[-1:]['Close'].values[0]
        if row.nearest_resistance == 'NA':
            #reward = stoploss x 2; no upper resistance means expecting 3x reward than risk
            reward = abs(((row.nearest_support-row.buy_value)/row.buy_value)*100)*3
@@ -152,27 +161,43 @@ def execute_trade_with_levels(top_10_pred):
                    pct_change_trade = ((row.nearest_resistance-row.buy_value)/row.buy_value)*100
                    realised_pct = pct_change_trade
                    exit_date = i.strftime('%Y-%m-%d')
+                   status = 'TARGET'
+                   sell = row.nearest_resistance
+                   break
                elif r['Low'] <= row.nearest_support:
                    pct_change_trade = ((row.nearest_support-row.buy_value)/row.buy_value)*100
                    realised_pct = pct_change_trade
                    exit_date = i.strftime('%Y-%m-%d')
+                   status = 'STOPLOSS'
+                   sell = row.nearest_support
+                   break
            else:
                if r['Low'] <= row.nearest_support:
                    pct_change_trade = ((row.buy_value-row.nearest_support)/row.nearest_support)*100
                    realised_pct = pct_change_trade
                    exit_date = i.strftime('%Y-%m-%d')
+                   status = 'STOPLOSS'
+                   sell = row.nearest_support
+                   break
                elif r['High'] >= row.nearest_resistance:
                    pct_change_trade = ((row.nearest_resistance-row.buy_value)/row.buy_value)*100
                    realised_pct = pct_change_trade
                    exit_date = i.strftime('%Y-%m-%d')
+                   status = 'TARGET'
+                   sell = row.nearest_resistance
+                   break
        exit_log.append(exit_date)
+       trade_status.append(status)
+       sell_value.append(sell)
        realised_pct_change.append(realised_pct) 
    top_10_pred['pct_change_trade'] = realised_pct_change
    top_10_pred['exit_date'] = exit_log
+   top_10_pred['Status'] = trade_status
+   top_10_pred['sell_value'] = sell_value
    return top_10_pred
     
 ###for all support and resistance from last 120 trading days
-def get_levels(ticker,date):
+def get_levels(ticker,date,plot):
     levels = []
     levels_df = pd.DataFrame(columns =['price'])
     df = all_data[all_data.symbol ==  ticker]
@@ -193,7 +218,10 @@ def get_levels(ticker,date):
             if isFarFromLevel(l,s,levels):
                 levels.append((i,l))
                 levels_df = levels_df.append({'price':l},ignore_index=True)
-    #plot_all(df,levels,ticker)
+                
+    #if plot:   
+        #plot_all(df,levels,ticker)
+                
     
     return levels_df
     

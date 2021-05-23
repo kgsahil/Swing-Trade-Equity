@@ -176,6 +176,8 @@ all_data['lowerband'] = all_data['15MA'] - 2*all_data['SD']
 
 all_data['RC'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.pct_change(periods = 1))
 
+#----------------------------------------------------------------------------------------
+
 all_data = all_data.dropna()
 
 features = ['High','Low','Open','Close','Volume','Adj Close','symbol','SMA_ratio','ATR_5','ATR_15','ATR_Ratio',
