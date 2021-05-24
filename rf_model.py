@@ -15,6 +15,7 @@ from scipy.stats import mstats
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import  TimeSeriesSplit,ShuffleSplit , validation_curve
 from sklearn.tree import export_graphviz
+from sklearn import tree
 import pickle
 from sklearn.model_selection import GridSearchCV
 sns.set()
@@ -29,7 +30,7 @@ all_data = pd.read_csv('./files/all_stock_data_with_indicators.csv')
 all_data.Date = pd.to_datetime(all_data.Date)
 all_data = all_data.set_index('Date')
 
-all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-7))
+all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-19))
 all_data['Target'] = ((all_data['Close_Shifted'] - all_data['Open'])/(all_data['Open']) * 100).shift(-1)
 all_data['Target_Direction'] = np.where(all_data['Target']>0,1,0)
 all_data = all_data.dropna().copy()
@@ -65,7 +66,7 @@ test_scores_std = np.std(test_scoreNum, axis=1)
 
 plt.figure(figsize = (20,10))
 plt.plot([70,100,200,250],train_scores_mean)
-plt.plot([70,100,200,2500],test_scores_mean)
+plt.plot([70,100,200,250],test_scores_mean)
 plt.legend(['Train Score','Test Score'], fontsize = 'large')
 plt.title('Validation Curve Score for n_estimators', fontsize = 'large')
 
@@ -96,7 +97,7 @@ for cluster_selected in clusters_df.Cluster.unique():
     params = {
           'max_features': ['auto','sqrt'],
           'min_samples_leaf': [10, 15],
-          'n_estimators': [20,30,70],
+          'n_estimators': [100,125,175],
          'min_samples_split':[20, 25, 30]} #Using Validation Curves
 
     rf = RandomForestClassifier()
@@ -113,18 +114,20 @@ for cluster_selected in clusters_df.Cluster.unique():
     #print(f'For cluster {cluster_selected} which has {len(clusters_df[clusters_df.Cluster == cluster_selected])} stocks')
     print(f'Best params: {rf_cv.best_params_}')
     #print(f'Best score: {rf_cv.best_score_}')
-    
+    #feat_importances = pd.Series(rf_cv.best_estimator_.feature_importances_, index=X_train.columns)
+    #feat_importances.plot(kind='barh',title=f'Cluster_{cluster_selected}')
     model_accuracy.loc[len(model_accuracy)]  = [cluster_selected,len(clusters_df[clusters_df.Cluster == cluster_selected]),rf_cv.best_score_]
 
     #Save the fited variable into a Pickle file
     file_loc = f'./files/clusters/Cluster_{cluster_selected}' 
-    
-    export_graphviz(rf_cv,
-                feature_names=X_train.columns,
-                filled=True,
-                rounded=True)
-    os.system('dot -Tpng tree.dot -o ./files/clusters/Cluster_{cluster_selected}.png')
     pickle.dump(rf_cv, open(file_loc,'wb'))
+    #fig, axes = plt.subplots(nrows = 1,ncols = 1,figsize = (8,8), dpi=800)
+    #tree.plot_tree(rf_cv.best_estimator_.estimators_[0],
+    #            feature_names=X_train.columns,
+    #           filled=True,
+    #            rounded=True)
+    #fig.savefig(f'Cluster_{cluster_selected}.png')
+    
   
 print(model_accuracy)
 

@@ -27,7 +27,7 @@ all_data = pd.read_csv('./files/all_stock_data_with_indicators.csv')
 all_data.Date = pd.to_datetime(all_data.Date)
 all_data = all_data.set_index('Date')
 
-all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-7))
+all_data['Close_Shifted'] = all_data.groupby('symbol')['Close'].transform(lambda x: x.shift(-19))
 all_data['Target'] = ((all_data['Close_Shifted'] - all_data['Open'])/(all_data['Open']) * 100).shift(-1)
 all_data['Target_Direction'] = np.where(all_data['Target']>0,1,0)
 all_data = all_data.dropna().copy() 
@@ -62,8 +62,8 @@ test_df = pd.DataFrame()
 
 # isoweekday: Monday is 1 and Sunday is 7
 trading_holidays= ['04-03-2019','21-03-2019','17-04-2019','19-04-2019','20-04-2019','01-05-2019','05-06-2019','12-08-2019','15-08-2019','02-09-2019','10-09-2019','02-10-2019','08-10-2019','21-10-2019','28-10-2019','12-11-2019','25-12-2019','21-02-2020','10-03-2020','02-Apr-2020','06-Apr-2020','10-04-2020','14-04-2020','01-05-2020','25-05-2020','02-10-2020','16-11-2020','30-11-2020','25-12-2020','26-01-2021','11-03-2021','20-03-2021','02-04-2021','14-04-2021','21-04-2021','13-05-2021','21-07-2021','19-08-2021','10-09-2021','15-10-2021','04-11-2021','05-11-2021','19-11-2021']
-start_date = dt.date(2020, 7, 12)
-end_date = dt.date(2020, 9, 20)
+start_date = dt.date(2021, 2, 20)
+end_date = dt.date(2021, 3 , 1)
 days = end_date - start_date
 valid_date_list = {(start_date + dt.timedelta(days=x)).strftime('%d-%m-%Y')
                         for x in range(days.days+1)
@@ -80,13 +80,14 @@ for d in trading_holidays:
 valid_date_list.sort(key = lambda date: dt.datetime.strptime(date, '%d-%m-%Y'))
 print("Trading Days = {}".format(sorted(valid_date_list)))
 number_of_trades = int(len(valid_date_list))
-print('Number of possible trades: ',number_of_trades)
+print('Number of possible trading days : ',number_of_trades)
 
 
 
 stockCounter =  pd.DataFrame()
 risk_reward_ratio = 1.5
 TradeBook = pd.DataFrame(columns=['Date','exit_date','Companies','Status','buy_value','sell_value','pct_change_trade','risk_reward_ratio'])
+model_pred_result_raw = pd.DataFrame(columns=['Date','Companies','buy_value','pct_change_trade'])
 for i in range(0,int(len(valid_date_list))):
     Trade_Date = dt.datetime.strptime(valid_date_list[i], '%d-%m-%Y').strftime('%Y-%m-%d')
     day_data = test_data.loc[Trade_Date]
@@ -127,18 +128,20 @@ for i in range(0,int(len(valid_date_list))):
     top_10_pred = get_buy_value(top_10_pred.copy()) 
     top_10_pred = get_nearest_support_resistance(top_10_pred.copy(),False)
     top_10_pred = get_risk_reward(top_10_pred.copy())
-    top_10_pred = get_index_change(top_10_pred.copy())
+    top_10_pred = get_index_change(top_10_pred.copy())  
     
     
-    top_10_pred = top_10_pred[top_10_pred.risk_reward_ratio >= risk_reward_ratio]
+    #before filtering get the raw predection
+    model_pred_result_raw =  model_pred_result_raw.append(top_10_pred[['Date','Companies','buy_value','pct_change_trade']])
     
     
-    top_10_pred = top_10_pred[top_10_pred['1WRC'] >= 0.85]
+    top_10_pred = top_10_pred[top_10_pred.risk_reward_ratio >= risk_reward_ratio] 
+    top_10_pred = top_10_pred[top_10_pred['1WRC'] >= top_10_pred['NIFTY50_1WRC']]
    
     
     #executing the trade not use in production
     top_10_pred = execute_trade_with_levels(top_10_pred.copy())
-    _ = get_nearest_support_resistance(top_10_pred.copy(),True)
+    
     
     try:
       
@@ -156,8 +159,19 @@ plt.ylabel('Returns')
 plt.xlabel(f'Trades Net profit/loss: {net_profit_loss}    with risk:reward of 1:{risk_reward_ratio}')
 plt.title(f'Trades from {start_date} to {end_date}')
 
+
+print('----------Trade result with model recomemdadtion and custom filteration-------------')
 print('Number of Trades: ',len(TradeBook))
 print("Net Profit/Loss: ",net_profit_loss)
 print(TradeBook.buy_value.sum(),TradeBook.sell_value.sum())
+
+model_pred_result_raw['sell_value'] = model_pred_result_raw['buy_value'] + ((model_pred_result_raw['pct_change_trade']/100)*model_pred_result_raw['buy_value'])
+net_profit_loss = ((model_pred_result_raw.sell_value.sum()-model_pred_result_raw.buy_value.sum())/model_pred_result_raw.buy_value.sum())*100
+print('----------Trade result with model recomemdadtion (RAW)-------------')
+print('Number of Trades: ',len(model_pred_result_raw))
+print("Net Profit/Loss: ",net_profit_loss)
+print(model_pred_result_raw['buy_value'].sum(),model_pred_result_raw['sell_value'].sum())
+
+TradeBook.to_csv('./files/clusters/tradebook.csv')
   
 

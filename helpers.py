@@ -43,7 +43,7 @@ def get_buy_value(top_10_pred):
    buys = []
    for index,row in top_10_pred.iterrows(): 
        df = all_data[all_data.symbol == row.Companies]
-       buy_value = df[row.Date:].head(2)['Open'].values[1]
+       buy_value = df[row.Date:].head(2)['Close'].values[0]
        buys.append(buy_value)
    top_10_pred['buy_value'] = buys
    return top_10_pred
@@ -103,7 +103,8 @@ def get_risk_reward(top_10_pred):
         else:
             risk = round(row.buy_value - row.nearest_support,2)
             #discard the trade if risk is more than 5%
-            if False:
+            risk_pct  = abs(((row.nearest_support-row.buy_value)/row.buy_value)*100)
+            if  risk_pct <= 2 :
                 ratio = 0
             else:
                 try:
@@ -123,6 +124,7 @@ def get_index_change(top_10_pred):
     date = dt.datetime.strftime(pd.to_datetime(top_10_pred.Date.values[0]),'%d-%m-%Y')
     data = all_index_data[all_index_data.Date == date]
     index_change = top_10_pred.merge(data[['NIFTY_INDEX','3DRC','1WRC']],on=["NIFTY_INDEX"], how='left')
+    index_change['NIFTY50_1WRC'] = data[data['NIFTY_INDEX'] == 'NIFTY 50'].reset_index()['1WRC'].values[0]
     return index_change
         
         
@@ -146,16 +148,20 @@ def execute_trade_with_levels(top_10_pred):
        selected = selected.iloc[1:]
        
        #Start the game 
-       realised_pct = row.pct_change_trade
+       sell = selected.iloc[-1:]['Close'].values[0]
+       realised_pct = ((sell-row.buy_value)/row.buy_value)*100
        exit_date = pd.to_datetime(selected.iloc[-1:].index)[0].date()
        status = 'HOLD'
-       sell = selected.iloc[-1:]['Close'].values[0]
+       
        if row.nearest_resistance == 'NA':
            #reward = stoploss x 2; no upper resistance means expecting 3x reward than risk
            reward = abs(((row.nearest_support-row.buy_value)/row.buy_value)*100)*3
            row.nearest_resistance = row.buy_value + ((reward/100)*row.buy_value)
        for i,r in selected.iterrows():
+           
            day_sentiment = r['Open'] - r['Close']
+           
+           #adding trailling stoploss if the target is near with 
            if day_sentiment:
                if r['High'] >= row.nearest_resistance:
                    pct_change_trade = ((row.nearest_resistance-row.buy_value)/row.buy_value)*100
@@ -219,8 +225,8 @@ def get_levels(ticker,date,plot):
                 levels.append((i,l))
                 levels_df = levels_df.append({'price':l},ignore_index=True)
                 
-    #if plot:   
-        #plot_all(df,levels,ticker)
+    if plot:   
+        plot_all(df,levels,ticker)
                 
     
     return levels_df
@@ -238,11 +244,15 @@ def isFarFromLevel(l,s,levels):
    return np.sum([abs(l-x) < s  for x in levels]) == 0
 
 def plot_all(df,levels,ticker):
+  levels_list = []
+  for i,l in levels:
+      levels_list.append(l)
   fig, ax = plt.subplots()
   candlestick_ohlc(ax,df.values,width=0.6, \
                    colorup='green', colordown='red', alpha=0.8)
   date_format = mpl_dates.DateFormatter('%d %b %Y')
   ax.xaxis.set_major_formatter(date_format)
+  ax.yaxis.set_ticks(levels_list)
   fig.autofmt_xdate()
   fig.tight_layout()
   plt.title(ticker)
