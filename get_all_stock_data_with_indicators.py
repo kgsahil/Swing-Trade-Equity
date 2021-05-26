@@ -47,7 +47,7 @@ tickers_from_2008 = ['ACC.NS', 'ADANIENT.NS', 'ADANIPORTS.NS', 'AMBUJACEM.NS',
 for i in tickers_from_2008:
     try:
         print(i)
-        test_data = pdr.get_data_yahoo(i, start = dt.datetime(2008,1,1), end = dt.date.today())
+        test_data = pdr.get_data_yahoo(i, start = dt.datetime(2021,4,1), end = dt.date.today())
         test_data['symbol'] = i
         all_data = all_data.append(test_data)
 
@@ -58,9 +58,9 @@ all_data.dropna(axis=1,inplace=True)
 
 all_data.info()
 
-all_data.to_csv('./files/all_data_2008.csv')
+all_data.to_csv('./files/all_data_updated.csv')
 
-all_data = pd.read_csv('./files/all_data_2008.csv')
+all_data = pd.read_csv('./files/all_data_updated.csv')
 
 #converting index to datetime format as we are reading from the local file the index gets reset with default index, make Date as index before using the data
 all_data.Date = pd.to_datetime(all_data.Date)
@@ -186,4 +186,4 @@ features = ['High','Low','Open','Close','Volume','Adj Close','symbol','SMA_ratio
 
 
 all_data_with_selected_indicators = all_data[features]
-all_data_with_selected_indicators.to_csv('./files/all_stock_data_with_indicators.csv')
+all_data_with_selected_indicators.to_csv('./files/all_stock_data_with_indicators_updated.csv')
