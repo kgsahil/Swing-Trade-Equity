@@ -17,37 +17,33 @@ all_data = pd.DataFrame()
 test_data = pd.DataFrame()
 no_data = []
 
-tickers_from_2005 = ['ACC.NS', 'ABBOTINDIA.NS', 'ADANIENT.NS', 'AMBUJACEM.NS',
-       'APOLLOHOSP.NS', 'ASIANPAINT.NS', 'AUROPHARMA.NS', 'AXISBANK.NS',
-       'BAJAJ-AUTO.NS', 'BAJFINANCE.NS', 'BERGEPAINT.NS', 'BPCL.NS',
-       'BHARTIARTL.NS', 'BIOCON.NS', 'BOSCHLTD.NS', 'BRITANNIA.NS',
-       'CADILAHC.NS', 'CIPLA.NS', 'COLPAL.NS', 'DABUR.NS', 'DIVISLAB.NS',
-       'DRREDDY.NS', 'EICHERMOT.NS', 'GAIL.NS', 'GODREJCP.NS', 'GRASIM.NS',
-       'HCLTECH.NS', 'HDFCBANK.NS']
-
-
-tickers_from_2008 = ['ACC.NS', 'ADANIENT.NS', 'ADANIPORTS.NS', 'AMBUJACEM.NS',
+tickers_from_2008_1= ['ACC.NS', 'ADANIENT.NS', 'ADANIPORTS.NS', 'AMBUJACEM.NS',
        'APOLLOHOSP.NS', 'ASIANPAINT.NS', 'AUROPHARMA.NS', 'AXISBANK.NS',
        'BAJAJ-AUTO.NS', 'BAJFINANCE.NS', 'BAJAJFINSV.NS', 'BAJAJHLDNG.NS',
        'BERGEPAINT.NS', 'BPCL.NS', 'BHARTIARTL.NS', 'BIOCON.NS', 'BOSCHLTD.NS',
        'BRITANNIA.NS', 'CADILAHC.NS', 'CIPLA.NS', 'COLPAL.NS', 'DLF.NS',
-       'DABUR.NS', 'DIVISLAB.NS', 'DRREDDY.NS', 'EICHERMOT.NS', 'GAIL.NS',
+       'DABUR.NS', 'DIVISLAB.NS']
+
+tickers_from_2008_2 = ['DRREDDY.NS', 'EICHERMOT.NS', 'GAIL.NS',
        'GODREJCP.NS', 'GRASIM.NS', 'HCLTECH.NS', 'HDFCBANK.NS', 'HAVELLS.NS',
        'HEROMOTOCO.NS', 'HINDALCO.NS', 'HINDPETRO.NS', 'HINDUNILVR.NS',
        'HDFC.NS', 'ICICIBANK.NS', 'IOC.NS', 'IGL.NS', 'INDUSINDBK.NS',
        'NAUKRI.NS', 'INFY.NS', 'JSWSTEEL.NS', 'KOTAKBANK.NS', 'LT.NS',
-       'LUPIN.NS', 'MRF.NS', 'M&M.NS', 'MARICO.NS', 'MARUTI.NS',
+       'LUPIN.NS', 'MRF.NS']
+
+tickers_from_2008_3 = ['M&M.NS', 'MARICO.NS', 'MARUTI.NS',
        'MOTHERSUMI.NS', 'NTPC.NS', 'ONGC.NS', 'PETRONET.NS', 'PIDILITIND.NS',
        'PEL.NS', 'POWERGRID.NS', 'PGHH.NS', 'PNB.NS', 'RELIANCE.NS',
        'SHREECEM.NS', 'SIEMENS.NS', 'SBIN.NS', 'SUNPHARMA.NS', 'TCS.NS',
        'TATAMOTORS.NS', 'TATASTEEL.NS', 'TECHM.NS', 'TITAN.NS',
        'TORNTPHARM.NS', 'UPL.NS', 'ULTRACEMCO.NS', 'VEDL.NS', 'WIPRO.NS',
        'YESBANK.NS']
+
 #Extract data from Yahoo Finance
-for i in tickers_from_2008:
+for i in tickers_from_2008_3:
     try:
         print(i)
-        test_data = pdr.get_data_yahoo(i, start = dt.datetime(2021,4,1), end = dt.date.today())
+        test_data = pdr.get_data_yahoo(i, start = dt.datetime(2020,10,1), end = dt.date.today())
         test_data['symbol'] = i
         all_data = all_data.append(test_data)
 
@@ -55,12 +51,24 @@ for i in tickers_from_2008:
         no_data.append(i)
 
 all_data.dropna(axis=1,inplace=True)
-
 all_data.info()
 
-all_data.to_csv('./files/all_data_updated.csv')
 
-all_data = pd.read_csv('./files/all_data_updated.csv')
+prev_all_data = pd.read_csv('./files/all_data.csv')
+prev_all_data.Date = pd.to_datetime(prev_all_data.Date)
+prev_all_data = prev_all_data.set_index('Date')
+
+
+prev_all_data = prev_all_data.append(all_data)
+prev_all_data = prev_all_data.dropna()
+
+
+prev_all_data.to_csv('./files/all_data.csv')
+
+
+#----------------------------------------------AFTER OHLC & Volume -------- CALCULATE INDICATORS--------------------------
+
+all_data = pd.read_csv('./files/all_data.csv')
 
 #converting index to datetime format as we are reading from the local file the index gets reset with default index, make Date as index before using the data
 all_data.Date = pd.to_datetime(all_data.Date)
@@ -186,4 +194,4 @@ features = ['High','Low','Open','Close','Volume','Adj Close','symbol','SMA_ratio
 
 
 all_data_with_selected_indicators = all_data[features]
-all_data_with_selected_indicators.to_csv('./files/all_stock_data_with_indicators_updated.csv')
+all_data_with_selected_indicators.to_csv('./files/all_stock_data_with_indicators.csv')
