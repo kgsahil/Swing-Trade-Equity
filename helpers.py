@@ -7,20 +7,32 @@ Created on Mon May 17 23:30:53 2021
 import pandas as pd
 import numpy as np
 import yfinance
-from mpl_finance import candlestick_ohlc
+from mplfinance.original_flavor import candlestick_ohlc
 import matplotlib.dates as mpl_dates
 import matplotlib.pyplot as plt
 import pandas_datareader as pdr
 import datetime as dt
+import os
+
+dir = './static/'
+for f in os.listdir(dir):
+    os.remove(os.path.join(dir, f))
+    
+    
 plt.rcParams['figure.figsize'] = [12, 7]
 plt.rc('font', size=14)
 
 all_data = pd.read_csv('./files/all_stock_data_with_indicators.csv')
 all_data.Date = pd.to_datetime(all_data.Date)
+all_data.Date = all_data.Date.transform(lambda x: x.date())
 all_data = all_data.set_index('Date')
 
 
+
 all_index_data = pd.read_csv('./files/all_index_data.csv')
+all_index_data.Date = pd.to_datetime(all_index_data.Date)
+all_index_data.Date = all_index_data.Date.transform(lambda x: x.date())
+all_index_data = all_index_data.set_index('Date')
 
 
 
@@ -121,8 +133,8 @@ def get_risk_reward(top_10_pred):
     
 
 def get_index_change(top_10_pred):
-    date = dt.datetime.strftime(pd.to_datetime(top_10_pred.Date.values[0]),'%d-%m-%Y')
-    data = all_index_data[all_index_data.Date == date]
+    date = top_10_pred.Date.values[0]
+    data = all_index_data.loc[date]
     index_change = top_10_pred.merge(data[['NIFTY_INDEX','3DRC','1WRC']],on=["NIFTY_INDEX"], how='left')
     index_change['NIFTY50_1WRC'] = data[data['NIFTY_INDEX'] == 'NIFTY 50'].reset_index()['1WRC'].values[0]
     return index_change
@@ -258,6 +270,8 @@ def plot_all(df,levels,ticker):
   plt.title(ticker)
   for level in levels:
     plt.hlines(level[1],xmin=df['Date'][level[0]],xmax=max(df['Date']),colors='blue')
-  fig.show()
+  fig.savefig(f"./static/{ticker}.png")
+  #fig.show()
+  
 
 

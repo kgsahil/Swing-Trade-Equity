@@ -54,10 +54,10 @@ Y_train = train_data.loc[:,['Target_Direction']]
 
 rf = RandomForestClassifier()
 train_scoreNum, test_scoreNum = validation_curve(rf,
-                                X = X_train.loc['2008-01-01':], 
-                                y = Y_train.loc['2008-01-01':,'Target_Direction'], 
+                                X = X_train.loc['2010-01-01':], 
+                                y = Y_train.loc['2010-01-01':,'Target_Direction'], 
                                 param_name = 'n_estimators', 
-                                param_range = [70,100,200,250], cv = ShuffleSplit(n_splits = 3))
+                                param_range = [70,100,125,150], cv = ShuffleSplit(n_splits = 3))
 
 train_scores_mean = np.mean(train_scoreNum, axis=1)
 train_scores_std = np.std(train_scoreNum, axis=1)
@@ -65,14 +65,13 @@ test_scores_mean = np.mean(test_scoreNum, axis=1)
 test_scores_std = np.std(test_scoreNum, axis=1)
 
 plt.figure(figsize = (20,10))
-plt.plot([70,100,200,250],train_scores_mean)
-plt.plot([70,100,200,250],test_scores_mean)
+plt.plot([70,100,125,150],train_scores_mean)
+plt.plot([70,100,125,150],test_scores_mean)
 plt.legend(['Train Score','Test Score'], fontsize = 'large')
 plt.title('Validation Curve Score for n_estimators', fontsize = 'large')
 
 
-feat_importances = pd.Series(rf.feature_importances_, index=X_train.columns)
-feat_importances.plot(kind='barh')
+
 ##------------------------------------------TRAINING----------------------------------------
 
 

@@ -54,3 +54,6 @@ except:
 
 #df_all_index_data['Date'] = pd.to_datetime(df_all_index_data['Date'])
 #df_all_index_data['Date']= df_all_index_data['Date'].apply(lambda d: d.strftime('%Y-%m-%d'))
+    
+    
+df_prev_index_data.tail()
