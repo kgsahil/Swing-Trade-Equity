@@ -9,11 +9,9 @@ Created on Sun May 16 12:18:09 2021
 import pandas as pd
 import numpy as np
 import datetime as dt
-import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import mstats
 import pickle
-sns.set()
 
 #from hidden_markov_model import get_volatility
 from helpers import *

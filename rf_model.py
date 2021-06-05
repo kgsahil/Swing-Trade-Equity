@@ -9,7 +9,6 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 import os   
-import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import mstats
 from sklearn.ensemble import RandomForestClassifier
@@ -18,7 +17,6 @@ from sklearn.tree import export_graphviz
 from sklearn import tree
 import pickle
 from sklearn.model_selection import GridSearchCV
-sns.set()
 
 from hidden_markov_model import get_volatility
 

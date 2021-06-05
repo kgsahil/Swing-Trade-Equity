@@ -6,7 +6,6 @@ Created on Mon May 17 23:30:53 2021
 """
 import pandas as pd
 import numpy as np
-import yfinance
 from mplfinance.original_flavor import candlestick_ohlc
 import matplotlib.dates as mpl_dates
 import matplotlib.pyplot as plt

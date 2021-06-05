@@ -1,0 +1,10 @@
+pandas
+numpy
+flask
+matplotlib
+sklearn
+nsepy
+pandas_datareader
+mplfinance
+hmmlearn
+scipy
